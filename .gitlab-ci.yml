@@ -1,0 +1,46 @@
+
+stages:
+  - deploy
+  - cleanup
+
+.variables: &variables
+  NAMESPACE: monitoring
+  APP: $CI_PROJECT_NAME
+  # APP_HOST: $CI_PROJECT_NAME.$CLUSTER_DOMAIN
+  # CLUSTER_DOMAIN: seandefontaine.com
+
+.deploy: &deploy
+  image: alpine/helm
+  tags:
+    - gitlab-runner
+  variables:
+    <<: *variables
+  only:
+    - main
+
+deploy:
+  <<: *deploy
+  stage: deploy
+  allow_failure: false
+  when: manual
+  environment:
+    name: production
+    # url: https://$APP_HOST
+    on_stop: stop
+  script:
+    # - helm upgrade -i $APP ./helm -n $NAMESPACE
+    #   --set namespace=$NAMESPACE --set name=$CI_PROJECT_NAME 
+    #   --set app.host=$APP_HOST --wait --debug --cleanup-on-fail
+    - helm upgrade -i $APP ./helm -n $NAMESPACE
+      --set namespace=$NAMESPACE --set name=$CI_PROJECT_NAME 
+      --wait --debug --cleanup-on-fail
+
+stop:
+  <<: *deploy
+  stage: cleanup
+  when: manual
+  environment:
+    name: production
+    action: stop
+  script:
+    - helm -n $NAMESPACE uninstall $APP
